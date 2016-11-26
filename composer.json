@@ -1,0 +1,35 @@
+{
+  "name": "alexmasterov/oauth2-hh",
+  "description": "HeadHunter.ru OAuth 2.0 Client Provider for The PHP League OAuth2-Client",
+  "license": "MIT",
+  "authors": [{
+    "name": "Alex Masterov",
+    "email": "alex.masterow@gmail.com"
+  }],
+  "keywords": [
+    "oauth",
+    "oauth2",
+    "client",
+    "authorization",
+    "authentication",
+    "hh",
+    "headhunter"
+  ],
+  "require": {
+    "league/oauth2-client": "^1.4.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^5.6",
+    "eloquent/phony": "^0.14"
+  },
+  "autoload": {
+    "psr-4": {
+      "AlexMasterov\\OAuth2\\Client\\Provider\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "AlexMasterov\\OAuth2\\Client\\Test\\Provider\\": "tests/"
+    }
+  }
+}
