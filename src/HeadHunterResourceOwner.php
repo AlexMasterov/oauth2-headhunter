@@ -3,9 +3,12 @@
 namespace AlexMasterov\OAuth2\Client\Provider;
 
 use League\OAuth2\Client\Provider\ResourceOwnerInterface;
+use League\OAuth2\Client\Tool\ArrayAccessorTrait;
 
 class HeadHunterResourceOwner implements ResourceOwnerInterface
 {
+    use ArrayAccessorTrait;
+
     /**
      * @var array
      */
@@ -14,7 +17,7 @@ class HeadHunterResourceOwner implements ResourceOwnerInterface
     /**
      * @param array $response
      */
-    public function __construct(array $response)
+    public function __construct(array $response = [])
     {
         $this->response = $response;
     }
@@ -24,7 +27,7 @@ class HeadHunterResourceOwner implements ResourceOwnerInterface
      */
     public function getId()
     {
-        return $this->response['id'];
+        return $this->getValueByKey($this->response, 'id');
     }
 
     /**
@@ -32,7 +35,7 @@ class HeadHunterResourceOwner implements ResourceOwnerInterface
      */
     public function getLastName()
     {
-        return $this->response['last_name'];
+        return $this->getValueByKey($this->response, 'last_name');
     }
 
     /**
@@ -40,7 +43,7 @@ class HeadHunterResourceOwner implements ResourceOwnerInterface
      */
     public function getFirstName()
     {
-        return $this->response['first_name'];
+        return $this->getValueByKey($this->response, 'first_name');
     }
 
     /**
@@ -48,7 +51,7 @@ class HeadHunterResourceOwner implements ResourceOwnerInterface
      */
     public function getMiddleName()
     {
-        return $this->response['middle_name'];
+        return $this->getValueByKey($this->response, 'middle_name');
     }
 
     /**
