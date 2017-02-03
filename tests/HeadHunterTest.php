@@ -7,7 +7,7 @@ use AlexMasterov\OAuth2\Client\Provider\HeadHunter;
 use Eloquent\Phony\Phpunit\Phony;
 use GuzzleHttp\ClientInterface;
 use League\OAuth2\Client\Token\AccessToken;
-use PHPUnit_Framework_TestCase as TestCase;
+use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 
 class HeadHunterTest extends TestCase
@@ -15,7 +15,7 @@ class HeadHunterTest extends TestCase
     /**
      * @var HeadHunter
      */
-    protected $provider;
+    private $provider;
 
     protected function setUp()
     {
@@ -31,11 +31,28 @@ class HeadHunterTest extends TestCase
         parent::tearDown();
     }
 
+    protected function mockResponse($body)
+    {
+        $response = Phony::mock(ResponseInterface::class);
+        $response->getHeader->with('content-type')->returns('application/json');
+        $response->getBody->returns(json_encode($body));
+
+        return $response;
+    }
+
+    protected function mockClient(ResponseInterface $response)
+    {
+        $client = Phony::mock(ClientInterface::class);
+        $client->send->returns($response);
+
+        return $client;
+    }
+
     public function testAuthorizationUrl()
     {
         // Run
         $url = $this->provider->getAuthorizationUrl();
-        $path = parse_url($url, PHP_URL_PATH);
+        $path = \parse_url($url, PHP_URL_PATH);
 
         // Verify
         $this->assertSame('/oauth/authorize', $path);
@@ -47,7 +64,7 @@ class HeadHunterTest extends TestCase
 
         // Run
         $url = $this->provider->getBaseAccessTokenUrl($params);
-        $path = parse_url($url, PHP_URL_PATH);
+        $path = \parse_url($url, PHP_URL_PATH);
 
         // Verify
         $this->assertSame('/oauth/token', $path);
@@ -69,36 +86,30 @@ class HeadHunterTest extends TestCase
     public function testGetAccessToken()
     {
         // https://github.com/hhru/api/blob/master/docs/authorization.md
-        $rawResponse = [
+        $body = [
             'access_token'  => 'mock_access_token',
             'token_type'    => 'bearer',
-            'expires_in'    => time() * 3600,
+            'expires_in'    => \time() * 3600,
             'refresh_token' => 'mock_refresh_token',
         ];
 
-        $response = Phony::mock(ResponseInterface::class);
-        $response->getHeader->with('content-type')->returns('application/json');
-        $response->getBody->returns(json_encode($rawResponse));
-
-        $client = Phony::mock(ClientInterface::class);
-        $client->send->returns($response->get());
+        $response = $this->mockResponse($body);
+        $client = $this->mockClient($response->get());
 
         // Run
         $this->provider->setHttpClient($client->get());
-        $token = $this->provider->getAccessToken('authorization_code', [
-            'code' => 'mock_authorization_code',
-        ]);
+        $token = $this->provider->getAccessToken('authorization_code', ['code' => 'mock_authorization_code']);
 
         // Verify
-        $this->assertEquals($rawResponse['access_token'], $token->getToken());
-        $this->assertEquals($rawResponse['refresh_token'], $token->getRefreshToken());
-        $this->assertGreaterThanOrEqual($rawResponse['expires_in'], $token->getExpires());
         $this->assertNull($token->getResourceOwnerId());
+        $this->assertEquals($body['access_token'], $token->getToken());
+        $this->assertEquals($body['refresh_token'], $token->getRefreshToken());
+        $this->assertGreaterThanOrEqual($body['expires_in'], $token->getExpires());
     }
 
     public function testUserProperty()
     {
-        $rawProperty = [
+        $body = [
             'id'          => 12345678,
             'last_name'   => 'lst_name',
             'first_name'  => 'first_name',
@@ -106,65 +117,45 @@ class HeadHunterTest extends TestCase
             'email'       => 'email',
         ];
 
-        $response = Phony::mock(ResponseInterface::class);
-        $response->getHeader->with('content-type')->returns('application/json');
-        $response->getBody->returns(json_encode($rawProperty));
-
-        $client = Phony::mock(ClientInterface::class);
-        $client->send->returns($response->get());
-
-        $token = new AccessToken([
+        $tokenOptions = [
             'access_token' => 'mock_access_token',
-            'expires_in' => 3600,
-        ]);
+            'expires_in'   => 3600,
+        ];
+
+        $token = new AccessToken($tokenOptions);
+        $response = $this->mockResponse($body);
+        $client = $this->mockClient($response->get());
 
         // Run
         $this->provider->setHttpClient($client->get());
         $user = $this->provider->getResourceOwner($token);
 
         // Verify
-        $this->assertEquals($rawProperty['id'], $user->getId());
-        $this->assertEquals($rawProperty['last_name'], $user->getLastName());
-        $this->assertEquals($rawProperty['first_name'], $user->getFirstName());
-        $this->assertEquals($rawProperty['middle_name'], $user->getMiddleName());
-
+        $this->assertEquals($body['id'], $user->getId());
+        $this->assertEquals($body['last_name'], $user->getLastName());
+        $this->assertEquals($body['first_name'], $user->getFirstName());
+        $this->assertEquals($body['middle_name'], $user->getMiddleName());
         $this->assertArrayHasKey('email', $user->toArray());
     }
 
     public function testErrorResponses()
     {
-        $error = [
+        $code = 400;
+        $body = [
             'error'             => 'Foo error',
             'error_description' => 'Error description',
         ];
 
-        $message = $error['error'].': '.$error['error_description'];
+        $response = $this->mockResponse($body);
+        $response->getStatusCode->returns($code);
+        $client = $this->mockClient($response->get());
 
-        $response = Phony::mock(ResponseInterface::class);
-        $response->getStatusCode->returns(400);
-        $response->getHeader->with('content-type')->returns('application/json');
-        $response->getBody->returns(json_encode($error));
-
-        $client = Phony::mock(ClientInterface::class);
-        $client->send->returns($response->get());
+        $this->expectException(HeadHunterException::class);
+        $this->expectExceptionCode($code);
+        $this->expectExceptionMessage(implode(': ', $body));
 
         // Run
         $this->provider->setHttpClient($client->get());
-
-        $errorMessage = '';
-        $errorCode = 0;
-
-        try {
-            $this->provider->getAccessToken('authorization_code', ['code' => 'mock_authorization_code']);
-        } catch (HeadHunterException $e) {
-            $errorMessage = $e->getMessage();
-            $errorCode = $e->getCode();
-            $errorBody = $e->getResponseBody();
-        }
-
-        // Verify
-        $this->assertEquals($message, $errorMessage);
-        $this->assertEquals(400, $errorCode);
-        $this->assertEquals(json_encode($error), $errorBody);
+        $this->provider->getAccessToken('authorization_code', ['code' => 'mock_authorization_code']);
     }
 }
