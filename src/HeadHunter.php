@@ -2,10 +2,12 @@
 
 namespace AlexMasterov\OAuth2\Client\Provider;
 
-use AlexMasterov\OAuth2\Client\Provider\Exception\HeadHunterException;
-use League\OAuth2\Client\Provider\AbstractProvider;
-use League\OAuth2\Client\Token\AccessToken;
-use League\OAuth2\Client\Tool\BearerAuthorizationTrait;
+use AlexMasterov\OAuth2\Client\Provider\HeadHunterException;
+use League\OAuth2\Client\{
+    Provider\AbstractProvider,
+    Token\AccessToken,
+    Tool\BearerAuthorizationTrait
+};
 use Psr\Http\Message\ResponseInterface;
 
 class HeadHunter extends AbstractProvider
@@ -40,6 +42,14 @@ class HeadHunter extends AbstractProvider
     /**
      * @inheritDoc
      */
+    protected function getDefaultScopes()
+    {
+        return [];
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function getBaseAuthorizationUrl()
     {
         return $this->urlAuthorize;
@@ -54,7 +64,7 @@ class HeadHunter extends AbstractProvider
             $params['code'] = '';
         }
 
-        return $this->urlAccessToken.'?'.
+        return $this->urlAccessToken . '?' .
             $this->buildQueryString($params);
     }
 
@@ -63,18 +73,10 @@ class HeadHunter extends AbstractProvider
      */
     public function getResourceOwnerDetailsUrl(AccessToken $token)
     {
-        return $this->urlApi.'/me?'.
+        return $this->urlApi . '/me?' .
             $this->buildQueryString([
                 'access_token' => (string) $token,
             ]);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    protected function getDefaultScopes()
-    {
-        return [];
     }
 
     /**
