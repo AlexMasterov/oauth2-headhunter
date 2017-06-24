@@ -3,6 +3,7 @@ language: php
 php:
   - 7.0
   - 7.1
+  - nightly
 
 sudo: false
 
@@ -17,16 +18,21 @@ git:
 matrix:
   fast_finish: true
   include:
-    - php: 7
+    - php: 7.1
       env:
         - COMPOSER_FLAGS="--prefer-stable"
+  allow_failures:
+    - php: nightly
 
-before_script:
-  - travis_retry composer update ${COMPOSER_FLAGS} --no-interaction --prefer-source
+install:
+  - travis_retry composer update --no-interaction --prefer-source ${COMPOSER_FLAGS}
 
 script:
   - composer test
 
 after_script:
-  - bash -c '[[ -f "build/logs/clover.xml" ]] && wget https://scrutinizer-ci.com/ocular.phar'
-  - bash -c '[[ -f "build/logs/clover.xml" ]] && php ocular.phar code-coverage:upload --format=php-clover build/logs/clover.xml'
+  - |
+    if [ -f "build/logs/clover.xml" ]; then
+      wget https://scrutinizer-ci.com/ocular.phar
+      php ocular.phar code-coverage:upload --format=php-clover build/logs/clover.xml
+    fi
